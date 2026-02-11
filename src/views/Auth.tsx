@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,6 @@ const Auth = () => {
     'patient',
   );
   const { setRole } = useMindConnect();
-  const router = useRouter();
 
   const handleAuth = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -36,6 +34,7 @@ const Auth = () => {
     const password = (formData.get('password') as string).trim();
     const patientProfile = {
       full_name: (formData.get('full_name') as string | null)?.trim() || '',
+      gender: (formData.get('gender') as string | null)?.trim() || '',
       date_of_birth: (formData.get('dob') as string | null) || '',
       medical_history:
         (formData.get('medical_history') as string | null)?.trim() || '',
@@ -60,12 +59,17 @@ const Auth = () => {
         setRole(resolvedRole);
         const pendingProfile = localStorage.getItem('pendingPatientProfile');
         if (pendingProfile && resolvedRole === 'patient') {
-          await fetch('/api/patients', {
+          const response = await fetch('/api/patients', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: pendingProfile,
           });
-          localStorage.removeItem('pendingPatientProfile');
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            alert(data.error || 'Failed to create patient profile.');
+          } else {
+            localStorage.removeItem('pendingPatientProfile');
+          }
         }
         const dashboardPath =
           resolvedRole === 'psychologist'
@@ -73,8 +77,7 @@ const Auth = () => {
             : resolvedRole === 'admin'
               ? '/admin/dashboard'
               : '/patient/dashboard';
-        router.push(dashboardPath);
-        router.refresh();
+        window.location.href = dashboardPath;
       }
     } else {
       const { data, error } = await supabase.auth.signUp({
@@ -101,15 +104,27 @@ const Auth = () => {
         if (selectedRole === 'patient') {
           const payload = JSON.stringify(patientProfile);
           if (data.session?.user) {
-            await fetch('/api/patients', {
+            const response = await fetch('/api/patients', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: payload,
             });
+            if (!response.ok) {
+              const data = await response.json().catch(() => ({}));
+              alert(data.error || 'Failed to create patient profile.');
+            }
           } else {
             // Store locally until the user logs in after email confirmation
             localStorage.setItem('pendingPatientProfile', payload);
           }
+        }
+        if (data.session?.user) {
+          const dashboardPath =
+            selectedRole === 'psychologist'
+              ? '/psych/dashboard'
+              : '/patient/dashboard';
+          window.location.href = dashboardPath;
+          return;
         }
         alert('Account created! Please check your email/login.');
         setMode('login');
@@ -243,6 +258,22 @@ const AuthForm = ({ mode, selectedRole, setMode, onSubmit }: AuthFormProps) => {
           <div className="space-y-2">
             <Label htmlFor="dob">Date of birth</Label>
             <Input id="dob" name="dob" type="date" required />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="gender">Gender</Label>
+            <select
+              id="gender"
+              name="gender"
+              aria-label="Gender"
+              required
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="">Select gender</option>
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Non-binary">Non-binary</option>
+              <option value="Prefer not to say">Prefer not to say</option>
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="medical_history">Medical history</Label>

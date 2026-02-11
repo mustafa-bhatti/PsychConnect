@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 interface PatientPayload {
   full_name: string;
+  gender: string;
   date_of_birth: string;
   medical_history: string;
   preferences_text: string;
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
     {
       user_id: userData.user.id,
       date_of_birth: body.date_of_birth || null,
+      gender: body.gender || null,
       medical_history: body.medical_history,
       preferences,
     },
