@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useMindConnect,
@@ -33,6 +34,14 @@ const Auth = () => {
     const formData = new FormData(event.target as HTMLFormElement);
     const email = (formData.get('email') as string).trim();
     const password = (formData.get('password') as string).trim();
+    const patientProfile = {
+      full_name: (formData.get('full_name') as string | null)?.trim() || '',
+      date_of_birth: (formData.get('dob') as string | null) || '',
+      medical_history:
+        (formData.get('medical_history') as string | null)?.trim() || '',
+      preferences_text:
+        (formData.get('preferences') as string | null)?.trim() || '',
+    };
     const supabase = createClient();
 
     if (mode === 'login') {
@@ -47,17 +56,36 @@ const Auth = () => {
         const userRole = data.user?.user_metadata?.role as
           | MindConnectRole
           | undefined;
-        setRole(userRole ?? 'patient');
-        router.refresh(); // Refresh to let middleware handle redirect
+        const resolvedRole = userRole ?? 'patient';
+        setRole(resolvedRole);
+        const pendingProfile = localStorage.getItem('pendingPatientProfile');
+        if (pendingProfile && resolvedRole === 'patient') {
+          await fetch('/api/patients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: pendingProfile,
+          });
+          localStorage.removeItem('pendingPatientProfile');
+        }
+        const dashboardPath =
+          resolvedRole === 'psychologist'
+            ? '/psych/dashboard'
+            : resolvedRole === 'admin'
+              ? '/admin/dashboard'
+              : '/patient/dashboard';
+        router.push(dashboardPath);
+        router.refresh();
       }
     } else {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             role: selectedRole,
-            // Add other profile fields here if needed
+            ...(selectedRole === 'patient' && patientProfile.full_name
+              ? { full_name: patientProfile.full_name }
+              : {}),
           },
         },
       });
@@ -70,6 +98,19 @@ const Auth = () => {
           alert(error.message);
         }
       } else {
+        if (selectedRole === 'patient') {
+          const payload = JSON.stringify(patientProfile);
+          if (data.session?.user) {
+            await fetch('/api/patients', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+            });
+          } else {
+            // Store locally until the user logs in after email confirmation
+            localStorage.setItem('pendingPatientProfile', payload);
+          }
+        }
         alert('Account created! Please check your email/login.');
         setMode('login');
       }
@@ -106,10 +147,20 @@ const Auth = () => {
                 <TabsTrigger value="psychologist">Psychologist</TabsTrigger>
               </TabsList>
               <TabsContent value="patient" className="space-y-4">
-                <AuthForm mode={mode} setMode={setMode} onSubmit={handleAuth} />
+                <AuthForm
+                  mode={mode}
+                  selectedRole={selectedRole}
+                  setMode={setMode}
+                  onSubmit={handleAuth}
+                />
               </TabsContent>
               <TabsContent value="psychologist" className="space-y-4">
-                <AuthForm mode={mode} setMode={setMode} onSubmit={handleAuth} />
+                <AuthForm
+                  mode={mode}
+                  selectedRole={selectedRole}
+                  setMode={setMode}
+                  onSubmit={handleAuth}
+                />
               </TabsContent>
             </Tabs>
             <p className="mt-4 text-xs text-muted-foreground">
@@ -149,11 +200,12 @@ const Auth = () => {
 
 interface AuthFormProps {
   mode: 'login' | 'signup';
+  selectedRole: 'patient' | 'psychologist';
   setMode: (mode: 'login' | 'signup') => void;
   onSubmit: (event: React.FormEvent) => void;
 }
 
-const AuthForm = ({ mode, setMode, onSubmit }: AuthFormProps) => {
+const AuthForm = ({ mode, selectedRole, setMode, onSubmit }: AuthFormProps) => {
   return (
     <form className="space-y-4" onSubmit={onSubmit}>
       <div className="space-y-2">
@@ -176,6 +228,42 @@ const AuthForm = ({ mode, setMode, onSubmit }: AuthFormProps) => {
           required
         />
       </div>
+      {mode === 'signup' && selectedRole === 'patient' && (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="full_name">Full name</Label>
+            <Input
+              id="full_name"
+              name="full_name"
+              type="text"
+              placeholder="Your full name"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="dob">Date of birth</Label>
+            <Input id="dob" name="dob" type="date" required />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="medical_history">Medical history</Label>
+            <Textarea
+              id="medical_history"
+              name="medical_history"
+              placeholder="Share any diagnoses, medications, or relevant history"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="preferences">Preferences</Label>
+            <Textarea
+              id="preferences"
+              name="preferences"
+              placeholder="Language, therapy style, availability, or other preferences"
+              required
+            />
+          </div>
+        </div>
+      )}
       <Button type="submit" variant="hero" size="lg" className="w-full">
         {mode === 'login' ? 'Continue' : 'Create account'}
       </Button>
