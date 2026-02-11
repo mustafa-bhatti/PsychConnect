@@ -1,8 +1,11 @@
-import { ReactNode } from "react";
-import { NavLink } from "@/components/NavLink";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { useMindConnect } from "@/context/MindConnectContext";
+import { ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { NavLink } from '@/components/NavLink';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { useMindConnect } from '@/context/MindConnectContext';
+import { LogOut } from 'lucide-react';
 
 interface AppShellProps {
   title: string;
@@ -11,11 +14,43 @@ interface AppShellProps {
   className?: string;
 }
 
-export const AppShell = ({ title, description, children, className }: AppShellProps) => {
-  const { role } = useMindConnect();
+export const AppShell = ({
+  title,
+  description,
+  children,
+  className,
+}: AppShellProps) => {
+  const { role, isAuthenticated, logout } = useMindConnect();
+  const router = useRouter();
 
   const roleLabel =
-    role === "patient" ? "Patient" : role === "psychologist" ? "Psychologist" : "Admin";
+    role === 'patient'
+      ? 'Patient'
+      : role === 'psychologist'
+        ? 'Psychologist'
+        : role === 'admin'
+          ? 'Admin'
+          : null;
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
+  };
+
+  // Role-based navigation links
+  const navLinks: { to: string; label: string }[] = [];
+  if (role === 'patient') {
+    navLinks.push(
+      { to: '/patient/dashboard', label: 'Dashboard' },
+      { to: '/patient/assessment', label: 'Assessment' },
+      { to: '/patient/booking', label: 'Booking' },
+      { to: '/patient/matchmaking', label: 'Find Therapist' },
+    );
+  } else if (role === 'psychologist') {
+    navLinks.push({ to: '/psych/dashboard', label: 'Dashboard' });
+  } else if (role === 'admin') {
+    navLinks.push({ to: '/admin/dashboard', label: 'Dashboard' });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -24,52 +59,55 @@ export const AppShell = ({ title, description, children, className }: AppShellPr
           <NavLink to="/" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[hsl(var(--mint))] via-[hsl(var(--soft-blue))] to-[hsl(var(--lavender))] shadow-soft" />
             <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold">MindConnect</span>
-              <span className="text-xs text-muted-foreground">AI Telepsychology</span>
+              <span className="text-sm font-semibold">PsychConnect</span>
+              <span className="text-xs text-muted-foreground">
+                AI Telepsychology
+              </span>
             </div>
           </NavLink>
-          <nav className="hidden items-center gap-4 text-sm md:flex">
-            <NavLink
-              to="/patient/dashboard"
-              className="text-muted-foreground hover:text-foreground"
-              activeClassName="text-foreground"
-            >
-              Patient
-            </NavLink>
-            <NavLink
-              to="/psych/dashboard"
-              className="text-muted-foreground hover:text-foreground"
-              activeClassName="text-foreground"
-            >
-              Psychologist
-            </NavLink>
-            <NavLink
-              to="/admin/dashboard"
-              className="text-muted-foreground hover:text-foreground"
-              activeClassName="text-foreground"
-            >
-              Admin
-            </NavLink>
-            <NavLink
-              to="/system-flow"
-              className="text-muted-foreground hover:text-foreground"
-              activeClassName="text-foreground"
-            >
-              System Flow
-            </NavLink>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="hidden sm:inline-flex">
-              Role: {roleLabel}
-            </Badge>
-            <NavLink to="/auth" className="text-sm text-primary hover:underline">
-              Login / Signup
-            </NavLink>
+          {isAuthenticated && navLinks.length > 0 && (
+            <nav className="hidden items-center gap-4 text-sm md:flex">
+              {navLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  className="text-muted-foreground hover:text-foreground"
+                  activeClassName="text-foreground font-medium"
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
+          )}
+          <div className="flex items-center gap-3">
+            {isAuthenticated && roleLabel && (
+              <Badge variant="secondary" className="hidden sm:inline-flex">
+                {roleLabel}
+              </Badge>
+            )}
+            {isAuthenticated ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="gap-2 text-sm text-muted-foreground hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            ) : (
+              <NavLink
+                to="/auth"
+                className="text-sm text-primary hover:underline"
+              >
+                Login / Signup
+              </NavLink>
+            )}
           </div>
         </div>
       </header>
 
-      <main className={cn("container pb-10 pt-4 md:pt-6", className)}>
+      <main className={cn('container pb-10 pt-4 md:pt-6', className)}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3 md:mb-6">
           <div>
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl lg:text-3xl">

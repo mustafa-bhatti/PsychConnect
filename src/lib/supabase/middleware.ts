@@ -18,7 +18,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
           response = NextResponse.next({
             request: {
@@ -26,11 +26,11 @@ export async function updateSession(request: NextRequest) {
             },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   const {
@@ -47,7 +47,7 @@ export async function updateSession(request: NextRequest) {
       url.pathname.startsWith('/psych') ||
       url.pathname.startsWith('/admin'))
   ) {
-    url.pathname = '/start/auth'; // Assuming this is your login route info based on Views/Auth.tsx usually mapped to a route
+    url.pathname = '/auth';
     return NextResponse.redirect(url);
   }
 
@@ -71,7 +71,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Redirect connected users away from Auth pages
-    if (url.pathname === '/start/auth' || url.pathname === '/') {
+    if (url.pathname === '/auth') {
       if (role === 'patient') {
         url.pathname = '/patient/dashboard';
         return NextResponse.redirect(url);

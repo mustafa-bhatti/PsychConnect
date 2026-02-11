@@ -15,12 +15,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMindConnect } from '@/context/MindConnectContext';
+import {
+  useMindConnect,
+  type MindConnectRole,
+} from '@/context/MindConnectContext';
 
 const Auth = () => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [selectedRole, setSelectedRole] = useState<'patient' | 'psychologist'>(
-    'patient'
+    'patient',
   );
   const { setRole } = useMindConnect();
   const router = useRouter();
@@ -33,14 +36,18 @@ const Auth = () => {
     const supabase = createClient();
 
     if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) {
         alert(error.message); // Replace with toast later
       } else {
-        setRole(selectedRole); // Optimistic UI update
+        // Read the actual role from user metadata, not the UI tab
+        const userRole = data.user?.user_metadata?.role as
+          | MindConnectRole
+          | undefined;
+        setRole(userRole ?? 'patient');
         router.refresh(); // Refresh to let middleware handle redirect
       }
     } else {
@@ -57,7 +64,7 @@ const Auth = () => {
       if (error) {
         if (error.message.includes('rate limit')) {
           alert(
-            "Too many attempts! Please disable 'Confirm Email' in Supabase dashboard or wait a while."
+            "Too many attempts! Please disable 'Confirm Email' in Supabase dashboard or wait a while.",
           );
         } else {
           alert(error.message);
