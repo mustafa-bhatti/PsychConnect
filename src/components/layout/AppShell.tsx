@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useMindConnect } from '@/context/MindConnectContext';
-import { LogOut } from 'lucide-react';
+import { Brain, LogOut } from 'lucide-react';
 
 interface AppShellProps {
   title: string;
@@ -57,7 +57,9 @@ export const AppShell = ({
       <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
         <div className="container flex items-center justify-between py-3">
           <NavLink to="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[hsl(var(--mint))] via-[hsl(var(--soft-blue))] to-[hsl(var(--lavender))] shadow-soft" />
+              <div className="h-8 w-8 bg-teal-600 rounded-lg flex items-center justify-center">
+                <Brain className="h-5 w-5 text-white" />
+              </div>
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold">PsychConnect</span>
               <span className="text-xs text-muted-foreground">
