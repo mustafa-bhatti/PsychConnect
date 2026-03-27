@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +27,7 @@ const Auth = () => {
     'patient',
   );
   const { setRole } = useMindConnect();
+  const { toast } = useToast();
 
   const handleAuth = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -49,7 +51,11 @@ const Auth = () => {
         password,
       });
       if (error) {
-        alert(error.message); // Replace with toast later
+        toast({
+          title: 'Login failed',
+          description: error.message,
+          variant: 'destructive',
+        });
       } else {
         // Read the actual role from user metadata, not the UI tab
         const userRole = data.user?.user_metadata?.role as
@@ -66,7 +72,11 @@ const Auth = () => {
           });
           if (!response.ok) {
             const data = await response.json().catch(() => ({}));
-            alert(data.error || 'Failed to create patient profile.');
+            toast({
+              title: 'Profile creation failed',
+              description: data.error || 'Failed to create patient profile.',
+              variant: 'destructive',
+            });
           } else {
             localStorage.removeItem('pendingPatientProfile');
           }
@@ -94,11 +104,18 @@ const Auth = () => {
       });
       if (error) {
         if (error.message.includes('rate limit')) {
-          alert(
-            "Too many attempts! Please disable 'Confirm Email' in Supabase dashboard or wait a while.",
-          );
+          toast({
+            title: 'Too many attempts',
+            description:
+              "Please disable 'Confirm Email' in Supabase dashboard or wait a while.",
+            variant: 'destructive',
+          });
         } else {
-          alert(error.message);
+          toast({
+            title: 'Signup failed',
+            description: error.message,
+            variant: 'destructive',
+          });
         }
       } else {
         if (selectedRole === 'patient') {
@@ -111,7 +128,11 @@ const Auth = () => {
             });
             if (!response.ok) {
               const data = await response.json().catch(() => ({}));
-              alert(data.error || 'Failed to create patient profile.');
+              toast({
+                title: 'Profile creation failed',
+                description: data.error || 'Failed to create patient profile.',
+                variant: 'destructive',
+              });
             }
           } else {
             // Store locally until the user logs in after email confirmation
@@ -126,7 +147,11 @@ const Auth = () => {
           window.location.href = dashboardPath;
           return;
         }
-        alert('Account created! Please check your email/login.');
+        toast({
+          title: 'Account created!',
+          description:
+            'Please check your email to verify your account, then log in.',
+        });
         setMode('login');
       }
     }
