@@ -1,6 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AppShell } from '@/components/layout/AppShell';
 import {
   Card,
@@ -14,6 +17,35 @@ import { Button } from '@/components/ui/button';
 
 const PatientDashboard = () => {
   const router = useRouter();
+
+  const { data: profileStats, isLoading } = useQuery({
+    queryKey: ['patientProfileStats'],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) throw new Error('Not authenticated');
+
+      const { data: patient, error: patientError } = await supabase
+        .from('patients')
+        .select('preferences')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (patientError && patientError.code !== 'PGRST116') throw patientError;
+
+      const { count, error: countError } = await supabase
+        .from('assessments')
+        .select('*', { count: 'exact', head: true })
+        .eq('patient_id', authData.user.id);
+
+      if (countError) console.error(countError);
+
+      return {
+        preferences: patient?.preferences as Record<string, string> | null,
+        assessmentCount: count || 0,
+      };
+    },
+  });
 
   return (
     <AppShell
@@ -108,9 +140,35 @@ const PatientDashboard = () => {
               <CardTitle className="text-lg">Profile & settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-xs text-muted-foreground">
-              <p>Language: Urdu &amp; English</p>
-              <p>Preferred slots: Weekday evenings</p>
-              <p>AI assessment: Enabled</p>
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-2/5" />
+                </>
+              ) : (
+                <>
+                  <p>
+                    Language:{' '}
+                    {profileStats?.preferences?.language_preference ||
+                      'Not specified'}
+                  </p>
+                  <p>
+                    Preferred slots:{' '}
+                    {profileStats?.preferences?.availability_preference ||
+                      'Flexible'}
+                  </p>
+                  <p>
+                    Therapy style:{' '}
+                    {profileStats?.preferences?.therapy_style ||
+                      'Not specified'}
+                  </p>
+                  <p>
+                    Assessments completed: {profileStats?.assessmentCount || 0}
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
