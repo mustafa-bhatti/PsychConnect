@@ -40,8 +40,13 @@ const Auth = () => {
       date_of_birth: (formData.get('dob') as string | null) || '',
       medical_history:
         (formData.get('medical_history') as string | null)?.trim() || '',
-      preferences_text:
-        (formData.get('preferences') as string | null)?.trim() || '',
+      language_preference:
+        (formData.get('language_preference') as string | null)?.trim() || '',
+      therapy_style:
+        (formData.get('therapy_style') as string | null)?.trim() || '',
+      availability_preference:
+        (formData.get('availability_preference') as string | null)?.trim() ||
+        '',
     };
     const supabase = createClient();
 

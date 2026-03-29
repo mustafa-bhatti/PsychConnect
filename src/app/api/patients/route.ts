@@ -6,7 +6,9 @@ interface PatientPayload {
   gender: string;
   date_of_birth: string;
   medical_history: string;
-  preferences_text: string;
+  language_preference: string;
+  therapy_style: string;
+  availability_preference: string;
 }
 
 export async function POST(request: Request) {
@@ -25,20 +27,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { error: profileError } = await supabase.from('profiles').upsert({
-    id: userData.user.id,
-    email: userData.user.email,
-    role,
-    full_name: body.full_name,
-  });
+  // The `profiles` row is created automatically by the Postgres trigger `handle_new_user()`
+  // No need to upsert into `profiles` here.
 
-  if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 400 });
-  }
-
-  const preferences = body.preferences_text
-    ? { notes: body.preferences_text }
-    : {};
+  const preferences: Record<string, string> = {};
+  if (body.language_preference)
+    preferences.language_preference = body.language_preference;
+  if (body.therapy_style) preferences.therapy_style = body.therapy_style;
+  if (body.availability_preference)
+    preferences.availability_preference = body.availability_preference;
 
   const { error } = await supabase.from('patients').upsert(
     {
